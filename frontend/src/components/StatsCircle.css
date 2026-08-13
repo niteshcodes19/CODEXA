@@ -1,0 +1,48 @@
+.stats-circle-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-svg {
+  transform: rotate(-90deg);
+}
+
+.stats-circle-bg {
+  fill: none;
+  stroke: var(--glass-border);
+}
+
+.stats-circle-progress {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease-out;
+}
+
+.stats-circle-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.stats-total {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.stats-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
