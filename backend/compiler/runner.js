@@ -91,32 +91,9 @@ const outputsMatch = (actual, expected) => {
     return normalizeOutput(actual) === normalizeOutput(expected);
 };
 
-const runJava = (code, input) => {
+const compileJava = (runDir) => {
     return new Promise((resolve) => {
-        const fileName = uuidv4();
-        const runDir = path.join(os.tmpdir(), fileName);
-        fs.mkdirSync(runDir, { recursive: true });
-
-        const filePath = path.join(runDir, 'Main.java');
-        fs.writeFileSync(filePath, reorderJavaImports(code));
-
-        const startTime = Date.now();
         let compileError = '';
-
-        const cleanup = () => {
-            try {
-                fs.rmSync(runDir, { recursive: true, force: true });
-            } catch (e) {}
-        };
-
-        const timeoutRef = { id: null };
-
-        const finish = (result) => {
-            if (timeoutRef.id) clearTimeout(timeoutRef.id);
-            resolve(result);
-            cleanup();
-        };
-
         const javac = spawn('javac', ['Main.java'], { cwd: runDir });
 
         javac.stderr.on('data', (data) => {
@@ -124,67 +101,111 @@ const runJava = (code, input) => {
         });
 
         javac.on('error', (err) => {
-            finish({
-                output: '',
+            resolve({
+                success: false,
                 error: err.message.includes('ENOENT')
                     ? 'Java compiler (javac) not found. Please install JDK and add it to PATH.'
-                    : err.message,
-                runtime: Date.now() - startTime
+                    : err.message
             });
         });
 
         javac.on('close', (exitCode) => {
             if (exitCode !== 0) {
-                finish({
-                    output: '',
-                    error: compileError.trim() || 'Compilation failed',
-                    runtime: Date.now() - startTime
+                resolve({
+                    success: false,
+                    error: compileError.trim() || 'Compilation failed'
                 });
-                return;
+            } else {
+                resolve({ success: true });
             }
+        });
+    });
+};
 
-            const child = spawn('java', ['Main'], { cwd: runDir });
+const executeCompiledJava = (runDir, input, timeoutMs = 4000) => {
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        const child = spawn('java', ['-Xmx256m', 'Main'], { cwd: runDir });
 
-            let output = '';
-            let error = '';
+        let output = '';
+        let error = '';
+        let isDone = false;
 
-            timeoutRef.id = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+            if (!isDone) {
+                isDone = true;
                 child.kill();
-                finish({ output: '', error: 'Time Limit Exceeded', runtime: 5000 });
-            }, 5000);
-
-            if (input) {
-                child.stdin.write(normalizeTestInput(input));
-                child.stdin.end();
+                resolve({ output: '', error: 'Time Limit Exceeded', runtime: timeoutMs });
             }
+        }, timeoutMs);
 
-            child.stdout.on('data', (data) => {
-                output += data.toString();
-            });
+        if (input != null) {
+            child.stdin.write(normalizeTestInput(input));
+            child.stdin.end();
+        } else {
+            child.stdin.end();
+        }
 
-            child.stderr.on('data', (data) => {
-                error += data.toString();
-            });
+        child.stdout.on('data', (data) => {
+            output += data.toString();
+        });
 
-            child.on('error', (err) => {
-                finish({
+        child.stderr.on('data', (data) => {
+            error += data.toString();
+        });
+
+        child.on('error', (err) => {
+            if (!isDone) {
+                isDone = true;
+                clearTimeout(timeoutId);
+                resolve({
                     output: '',
                     error: err.message.includes('ENOENT')
                         ? 'Java runtime not found. Please install JDK and add it to PATH.'
                         : err.message,
                     runtime: Date.now() - startTime
                 });
-            });
+            }
+        });
 
-            child.on('close', () => {
-                finish({
+        child.on('close', () => {
+            if (!isDone) {
+                isDone = true;
+                clearTimeout(timeoutId);
+                resolve({
                     output,
                     error: error.trim(),
                     runtime: Date.now() - startTime
                 });
-            });
+            }
         });
     });
+};
+
+const runJava = async (code, input) => {
+    const fileName = uuidv4();
+    const runDir = path.join(os.tmpdir(), fileName);
+    fs.mkdirSync(runDir, { recursive: true });
+
+    try {
+        const filePath = path.join(runDir, 'Main.java');
+        fs.writeFileSync(filePath, reorderJavaImports(code));
+
+        const comp = await compileJava(runDir);
+        if (!comp.success) {
+            return {
+                output: '',
+                error: comp.error,
+                runtime: 0
+            };
+        }
+
+        return await executeCompiledJava(runDir, input);
+    } finally {
+        try {
+            fs.rmSync(runDir, { recursive: true, force: true });
+        } catch (e) {}
+    }
 };
 
 const runSingleTest = (code, language, input) => {
@@ -199,52 +220,93 @@ const runSingleTest = (code, language, input) => {
 };
 
 const runCode = async (code, language, testcases) => {
+    if (language !== 'java') {
+        return {
+            status: 'Runtime Error',
+            passed: 0,
+            total: testcases.length,
+            runtime: 0,
+            results: [],
+            error_message: 'Only Java submissions are supported'
+        };
+    }
+
+    const fileName = uuidv4();
+    const runDir = path.join(os.tmpdir(), fileName);
+    fs.mkdirSync(runDir, { recursive: true });
+
     const results = [];
     let passed = 0;
     let status = 'Accepted';
     let totalRuntime = 0;
     let errorMessage = '';
 
-    for (let i = 0; i < testcases.length; i++) {
-        const testcase = testcases[i];
-        
-        const res = await runSingleTest(code, language, testcase.input);
-        
-        const actual = extractProgramOutput(res.output);
-        const expected = (testcase.expected_output || '').replace(/\r\n/g, '\n').trim();
-        let tcPassed = false;
+    try {
+        const filePath = path.join(runDir, 'Main.java');
+        fs.writeFileSync(filePath, reorderJavaImports(code));
 
-        if (res.error) {
-            if (res.error === 'Time Limit Exceeded') {
-                status = 'Time Limit Exceeded';
-                errorMessage = res.error;
-            } else if (/error:|Compilation failed|javac not found/i.test(res.error)) {
-                status = 'Compilation Error';
-                errorMessage = res.error;
+        // 1. Compile ONCE for all testcases
+        const comp = await compileJava(runDir);
+        if (!comp.success) {
+            return {
+                status: 'Compilation Error',
+                passed: 0,
+                total: testcases.length,
+                runtime: 0,
+                results: testcases.map((tc, i) => ({
+                    testcase_index: i,
+                    input: tc.input,
+                    expected: tc.expected_output,
+                    actual: '',
+                    passed: false,
+                    runtime: 0
+                })),
+                error_message: comp.error
+            };
+        }
+
+        // 2. Run compiled bytecode against each testcase rapidly
+        for (let i = 0; i < testcases.length; i++) {
+            const testcase = testcases[i];
+            const res = await executeCompiledJava(runDir, testcase.input);
+
+            const actual = extractProgramOutput(res.output);
+            const expected = (testcase.expected_output || '').replace(/\r\n/g, '\n').trim();
+            let tcPassed = false;
+
+            if (res.error) {
+                if (res.error === 'Time Limit Exceeded') {
+                    status = 'Time Limit Exceeded';
+                    errorMessage = res.error;
+                } else {
+                    status = 'Runtime Error';
+                    errorMessage = res.error;
+                }
+            } else if (outputsMatch(actual, expected)) {
+                tcPassed = true;
+                passed++;
             } else {
-                status = 'Runtime Error';
-                errorMessage = res.error;
+                status = 'Wrong Answer';
             }
-        } else if (outputsMatch(actual, expected)) {
-            tcPassed = true;
-            passed++;
-        } else {
-            status = 'Wrong Answer';
-        }
 
-        totalRuntime += res.runtime;
-        results.push({
-            testcase_index: i,
-            input: testcase.input,
-            expected: testcase.expected_output,
-            actual: extractProgramOutput(res.output) || res.output,
-            passed: tcPassed,
-            runtime: res.runtime
-        });
+            totalRuntime += res.runtime;
+            results.push({
+                testcase_index: i,
+                input: testcase.input,
+                expected: testcase.expected_output,
+                actual: extractProgramOutput(res.output) || res.output,
+                passed: tcPassed,
+                runtime: res.runtime
+            });
 
-        if (status !== 'Accepted') {
-            break; // Stop running further tests on failure
+            if (status !== 'Accepted') {
+                break; // Stop on first failure
+            }
         }
+    } finally {
+        try {
+            fs.rmSync(runDir, { recursive: true, force: true });
+        } catch (e) {}
     }
 
     return {
