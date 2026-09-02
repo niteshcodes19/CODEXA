@@ -5,6 +5,11 @@
   padding: 2rem;
 }
 
+.spinner-container.spinner-small {
+  padding: 0 !important;
+  display: inline-flex;
+}
+
 .spinner-fullpage {
   position: fixed;
   top: 0;
@@ -22,4 +27,12 @@
   border-radius: 50%;
   border-top-color: var(--accent-primary);
   animation: spin 1s ease-in-out infinite;
+}
+
+.spinner.spinner-small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.25);
+  border-top-color: #ffffff;
 }

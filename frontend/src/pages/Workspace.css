@@ -451,6 +451,20 @@
   gap: 12px;
 }
 
+.action-buttons .btn {
+  width: 96px;
+  height: 38px;
+  min-width: 96px;
+  max-width: 96px;
+  padding: 0 !important;
+  box-sizing: border-box;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .btn {
   padding: 8px 24px;
   border-radius: var(--radius-md);
