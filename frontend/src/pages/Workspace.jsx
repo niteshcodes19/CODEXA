@@ -114,53 +114,66 @@ const Workspace = () => {
     setExecuting(true);
     setShowConsole(true);
     setConsoleTab('result');
-    setResult({ status: 'Evaluating...', type: 'submit' });
     setEvaluatingSubmit(true);
-    setLiveTestCount(0);
-
+    setLiveTestCount(1);
+    
+    // Estimate total testcases from question or default 50
     const estTotal = 50;
     setTotalExpectedTests(estTotal);
+    setResult({ status: 'Evaluating...', type: 'submit' });
 
-    let count = 0;
-    const timer = setInterval(() => {
-      count += 1;
-      if (count <= estTotal - 3) {
-        setLiveTestCount(count);
+    // Start live countdown visual ticker
+    let visualCount = 1;
+    let apiFinished = false;
+    let finalResult = null;
+    let finalError = null;
+
+    const tickInterval = setInterval(() => {
+      if (!apiFinished) {
+        if (visualCount < estTotal - 5) {
+          visualCount += 1;
+          setLiveTestCount(visualCount);
+        }
+      } else {
+        // API has returned, step towards target
+        const actualTotal = finalResult?.total || estTotal;
+        const target = finalResult?.status === 'Accepted'
+          ? actualTotal
+          : Math.max(1, Math.min((finalResult?.passed || 0) + 1, actualTotal));
+
+        if (visualCount < target) {
+          visualCount += 1;
+          setLiveTestCount(visualCount);
+        } else {
+          clearInterval(tickInterval);
+          setTimeout(() => {
+            setEvaluatingSubmit(false);
+            if (finalError) {
+              setResult({ error: finalError, status: 'Error', type: 'submit' });
+              addToast(finalError || 'Submit failed', 'error');
+            } else if (finalResult) {
+              setResult({ ...finalResult, type: 'submit' });
+              if (finalResult.status === 'Accepted') {
+                addToast('🎉 Accepted! All test cases passed.', 'success');
+                refreshUser().catch(() => {});
+              } else {
+                addToast(`Failed on test case #${(finalResult.passed || 0) + 1}: ${finalResult.status}`, 'error');
+              }
+            }
+            setExecuting(false);
+          }, 150);
+        }
       }
-    }, 20);
+    }, 28);
 
     try {
       const res = await submitCode({ questionId: id, language, code });
-      clearInterval(timer);
-
-      const actualTotal = res.total || 50;
-      setTotalExpectedTests(actualTotal);
-      const targetCount = res.status === 'Accepted' ? actualTotal : Math.min(res.passed + 1, actualTotal);
-
-      let cur = Math.min(count, actualTotal);
-      const stepTimer = setInterval(() => {
-        if (cur < targetCount) {
-          cur += 1;
-          setLiveTestCount(cur);
-        } else {
-          clearInterval(stepTimer);
-          setEvaluatingSubmit(false);
-          setResult({ ...res, type: 'submit' });
-          if (res.status === 'Accepted') {
-            addToast('🎉 Accepted! All test cases passed.', 'success');
-            refreshUser().catch(() => {});
-          } else {
-            addToast(res.status || 'Submission failed', 'error');
-          }
-        }
-      }, 12);
+      finalResult = res;
+      setTotalExpectedTests(res.total || estTotal);
+      apiFinished = true;
     } catch (err) {
-      clearInterval(timer);
-      setEvaluatingSubmit(false);
-      setResult({ error: err.message, status: 'Error', type: 'submit' });
-      addToast(err.message || 'Submit failed', 'error');
-    } finally {
-      setExecuting(false);
+      finalError = err.message || 'Submit failed';
+      apiFinished = true;
     }
   };
 
@@ -345,15 +358,15 @@ const Workspace = () => {
                         <div className="eval-spinner-ring"></div>
                         <div className="eval-title-group">
                           <h3 className="eval-title">Evaluating Submission</h3>
-                          <p className="eval-subtitle">Running test cases against solution...</p>
+                          <p className="eval-subtitle">Testing against {totalExpectedTests} deterministic test cases...</p>
                         </div>
                       </div>
 
                       <div className="eval-metric-box">
                         <div className="eval-counter-row">
-                          <span className="eval-test-label">Test Cases</span>
+                          <span className="eval-test-label">Live Test Case Progress</span>
                           <span className="eval-counter-digits">
-                            <strong className="eval-passed-num">{liveTestCount}</strong> / {totalExpectedTests} Passed
+                            <strong className="eval-passed-num">{liveTestCount}</strong> / {totalExpectedTests} Passed ✓
                           </span>
                         </div>
                         <div className="eval-progress-bar-bg">
@@ -366,7 +379,7 @@ const Workspace = () => {
 
                       <div className="eval-live-ticker">
                         <span className="ticker-dot"></span>
-                        <span>Evaluating test case #{Math.min(liveTestCount + 1, totalExpectedTests)}...</span>
+                        <span>Evaluating Test Case #{liveTestCount} of {totalExpectedTests}...</span>
                       </div>
                     </div>
                   ) : !result ? (
@@ -460,7 +473,15 @@ const Workspace = () => {
               {executing && consoleTab === 'result' && result?.type === 'run' ? <LoadingSpinner size="small" /> : 'Run'}
             </button>
             <button className="btn filled-btn submit-btn" onClick={handleSubmit} disabled={executing}>
-              {executing && consoleTab === 'result' && result?.type === 'submit' ? <LoadingSpinner size="small" /> : 'Submit'}
+              {executing && consoleTab === 'result' && result?.type === 'submit' ? (
+                evaluatingSubmit ? (
+                  <span className="btn-eval-count">{liveTestCount}/{totalExpectedTests}</span>
+                ) : (
+                  <LoadingSpinner size="small" />
+                )
+              ) : (
+                'Submit'
+              )}
             </button>
           </div>
         </div>
