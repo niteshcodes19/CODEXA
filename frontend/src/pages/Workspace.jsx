@@ -32,6 +32,9 @@ const Workspace = () => {
   // Execution state
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState(null);
+  const [evaluatingSubmit, setEvaluatingSubmit] = useState(false);
+  const [liveTestCount, setLiveTestCount] = useState(0);
+  const [totalExpectedTests, setTotalExpectedTests] = useState(50);
 
   const { clearDraft } = useCodeDraft(id, code);
   const dividerRef = useRef(null);
@@ -90,9 +93,10 @@ const Workspace = () => {
   const handleRun = async () => {
     if (!requireUserSession()) return;
     setExecuting(true);
+    setEvaluatingSubmit(false);
     setShowConsole(true);
     setConsoleTab('result');
-    setResult({ status: 'Executing...', type: 'run' });
+    setResult({ status: 'Executing sample test...', type: 'run' });
     try {
       const res = await runCode({ questionId: id, language, code, input: customInput });
       setResult({ ...res, type: 'run' });
@@ -111,16 +115,48 @@ const Workspace = () => {
     setShowConsole(true);
     setConsoleTab('result');
     setResult({ status: 'Evaluating...', type: 'submit' });
+    setEvaluatingSubmit(true);
+    setLiveTestCount(0);
+
+    const estTotal = 50;
+    setTotalExpectedTests(estTotal);
+
+    let count = 0;
+    const timer = setInterval(() => {
+      count += 1;
+      if (count <= estTotal - 3) {
+        setLiveTestCount(count);
+      }
+    }, 20);
+
     try {
       const res = await submitCode({ questionId: id, language, code });
-      setResult({ ...res, type: 'submit' });
-      if (res.status === 'Accepted') {
-        addToast('Accepted! Great job.', 'success');
-        refreshUser().catch(() => {});
-      } else {
-        addToast(res.status || 'Submission failed', 'error');
-      }
+      clearInterval(timer);
+
+      const actualTotal = res.total || 50;
+      setTotalExpectedTests(actualTotal);
+      const targetCount = res.status === 'Accepted' ? actualTotal : Math.min(res.passed + 1, actualTotal);
+
+      let cur = Math.min(count, actualTotal);
+      const stepTimer = setInterval(() => {
+        if (cur < targetCount) {
+          cur += 1;
+          setLiveTestCount(cur);
+        } else {
+          clearInterval(stepTimer);
+          setEvaluatingSubmit(false);
+          setResult({ ...res, type: 'submit' });
+          if (res.status === 'Accepted') {
+            addToast('🎉 Accepted! All test cases passed.', 'success');
+            refreshUser().catch(() => {});
+          } else {
+            addToast(res.status || 'Submission failed', 'error');
+          }
+        }
+      }, 12);
     } catch (err) {
+      clearInterval(timer);
+      setEvaluatingSubmit(false);
       setResult({ error: err.message, status: 'Error', type: 'submit' });
       addToast(err.message || 'Submit failed', 'error');
     } finally {
@@ -303,11 +339,56 @@ const Workspace = () => {
                 </div>
               ) : (
                 <div className="result-tab">
-                  {!result ? (
-                    <div className="result-empty">Run code to see results</div>
+                  {evaluatingSubmit ? (
+                    <div className="eval-card">
+                      <div className="eval-header">
+                        <div className="eval-spinner-ring"></div>
+                        <div className="eval-title-group">
+                          <h3 className="eval-title">Evaluating Submission</h3>
+                          <p className="eval-subtitle">Running test cases against solution...</p>
+                        </div>
+                      </div>
+
+                      <div className="eval-metric-box">
+                        <div className="eval-counter-row">
+                          <span className="eval-test-label">Test Cases</span>
+                          <span className="eval-counter-digits">
+                            <strong className="eval-passed-num">{liveTestCount}</strong> / {totalExpectedTests} Passed
+                          </span>
+                        </div>
+                        <div className="eval-progress-bar-bg">
+                          <div 
+                            className="eval-progress-bar-fill" 
+                            style={{ width: `${Math.min(100, Math.round((liveTestCount / totalExpectedTests) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="eval-live-ticker">
+                        <span className="ticker-dot"></span>
+                        <span>Evaluating test case #{Math.min(liveTestCount + 1, totalExpectedTests)}...</span>
+                      </div>
+                    </div>
+                  ) : !result ? (
+                    <div className="result-empty">Run code or submit to see results</div>
                   ) : (
                     <div className={`result-content ${result.status === 'Accepted' ? 'success' : result.status === 'Error' ? 'error' : 'warning'}`}>
-                      <h3 className="result-status">{result.status}</h3>
+                      <div className="result-status-header">
+                        <div className={`status-badge-icon ${result.status === 'Accepted' ? 'icon-success' : 'icon-fail'}`}>
+                          {result.status === 'Accepted' ? '✓' : '✕'}
+                        </div>
+                        <div>
+                          <h3 className="result-status">{result.status}</h3>
+                          {result.type === 'submit' && result.passed !== undefined && (
+                            <p className="result-status-sub">
+                              {result.status === 'Accepted' 
+                                ? `All ${result.total} test cases passed successfully!` 
+                                : `Passed ${result.passed} of ${result.total} test cases (Failed at testcase #${result.passed + 1})`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
                       {result.error && (
                         <div className="result-error-box">
                           <pre>{result.error}</pre>
@@ -316,7 +397,9 @@ const Workspace = () => {
                       
                       {result.type === 'run' && result.output !== undefined && (
                         <div className="run-result">
-                          <p className="result-meta">Runtime: {result.runtime}ms</p>
+                          <div className="result-pill-row">
+                            <span className="stat-pill">⚡ Runtime: {result.runtime}ms</span>
+                          </div>
                           <h4>Output:</h4>
                           <pre className="output-box">{result.output}</pre>
                         </div>
@@ -324,26 +407,33 @@ const Workspace = () => {
                       
                       {result.type === 'submit' && result.passed !== undefined && (
                         <div className="submit-result">
-                          <p className="result-meta">Passed {result.passed} / {result.total} Testcases • Runtime: {result.runtime}ms</p>
+                          <div className="result-pill-row">
+                            <span className="stat-pill">⚡ Runtime: {result.runtime}ms</span>
+                            <span className={`stat-pill ${result.status === 'Accepted' ? 'stat-pill-success' : 'stat-pill-fail'}`}>
+                              🎯 {result.passed} / {result.total} Passed
+                            </span>
+                          </div>
+
                           {result.error_message && (
                             <div className="result-error-box">
                               <pre>{result.error_message}</pre>
                             </div>
                           )}
+                          
                           {result.status !== 'Accepted' && result.failing_testcase && (
                             <div className="failing-testcase-details">
-                              <h4>Failing Testcase:</h4>
+                              <h4>Failing Testcase (Test #{result.passed + 1}):</h4>
                               <div className="detail-row">
                                 <span className="label">Input:</span>
                                 <code>{result.failing_testcase.input}</code>
                               </div>
                               <div className="detail-row">
                                 <span className="label">Expected:</span>
-                                <code>{result.failing_testcase.expected}</code>
+                                <code className="expected-val">{result.failing_testcase.expected}</code>
                               </div>
                               <div className="detail-row">
-                                <span className="label">Actual:</span>
-                                <code>{result.failing_testcase.actual}</code>
+                                <span className="label">Output:</span>
+                                <code className="actual-val">{result.failing_testcase.actual || '""'}</code>
                               </div>
                             </div>
                           )}
