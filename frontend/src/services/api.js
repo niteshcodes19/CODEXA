@@ -2,7 +2,7 @@ import axios from 'axios';
 import { parseJwt } from '../utils/authToken';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://codexa-backend-8pxu.onrender.com/api',
 });
 
 const clearSession = () => {

@@ -66,7 +66,32 @@ const seedDefaultAdmins = async () => {
     }
 };
 
+const Question = require('./model/questions');
+const initialQuestions = require('./data/questions100');
+
+// Seed 100 questions if database is empty/incomplete
+const seedInitialQuestions = async () => {
+    try {
+        const count = await Question.countDocuments();
+        if (count < initialQuestions.length) {
+            console.log(`Database has ${count} questions. Auto-seeding all ${initialQuestions.length} questions...`);
+            for (const q of initialQuestions) {
+                await Question.findOneAndUpdate(
+                    { question_number: q.question_number },
+                    { $set: q },
+                    { upsert: true, returnDocument: 'after', runValidators: true }
+                );
+            }
+            const total = await Question.countDocuments();
+            console.log(`Auto-seeding complete! ${total} questions ready in database.`);
+        }
+    } catch (error) {
+        console.error('Error auto-seeding questions:', error.message);
+    }
+};
+
 seedDefaultAdmins();
+seedInitialQuestions();
 
 const port = process.env.PORT || 8000;
 app.listen(port, () => {
