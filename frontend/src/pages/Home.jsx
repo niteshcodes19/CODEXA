@@ -29,7 +29,7 @@ const Home = () => {
               <span className="badge-dot" /> Practice · Submit · Improve
             </span>
             <h1 className="hero-title">
-              Master coding interviews with <span className="text-gradient">Mini LeetCode</span>
+              Master coding interviews with <span className="text-gradient">CODEXA</span>
             </h1>
             <p className="hero-subtitle">
               Solve curated algorithm problems in Java, run code against a real judge, 
@@ -96,7 +96,7 @@ const Home = () => {
           <div className="feature-card glass-card">
             <div className="feature-icon"><FaChartLine /></div>
             <h3>Track Progress</h3>
-            <p>Solved counts by difficulty, submission history, and a LeetCode-style activity heatmap.</p>
+            <p>Solved counts by difficulty, submission history, and an activity heatmap.</p>
           </div>
         </div>
       </section>

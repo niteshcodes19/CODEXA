@@ -8,7 +8,7 @@ const Footer = () => {
       <div className="footer-inner">
         <div className="footer-brand">
           <Link to="/" className="footer-logo">
-            <span className="logo-icon">&lt;/&gt;</span> Mini LeetCode
+            <span className="logo-icon">&lt;/&gt;</span> CODEXA
           </Link>
           <p className="footer-tagline">
             Practice coding problems. Track progress. Ace interviews.
@@ -32,7 +32,7 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        <p>© 2026 Mini LeetCode. All rights reserved.</p>
+        <p>&copy; 2026 CODEXA. All rights reserved.</p>
         <p className="footer-made">Built for developers, by developers.</p>
       </div>
     </footer>

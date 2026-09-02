@@ -35,7 +35,7 @@ const Contact = () => {
               <div className="info-icon"><FaEnvelope /></div>
               <div>
                 <h3>Email</h3>
-                <p>support@minileetcode.dev</p>
+                <p>support@codexa.dev</p>
               </div>
             </div>
             <div className="info-card glass-card">

@@ -32,7 +32,7 @@ const Navbar = () => {
       <div className="navbar-inner">
         <Link to="/" className="logo" onClick={() => setMenuOpen(false)}>
           <span className="logo-icon">&lt;/&gt;</span>
-          <span className="logo-text">Mini LeetCode</span>
+          <span className="logo-text">CODEXA</span>
         </Link>
 
         <div className={`navbar-links ${menuOpen ? 'open' : ''}`}>

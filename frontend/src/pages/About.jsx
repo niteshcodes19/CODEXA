@@ -17,7 +17,7 @@ const values = [
   {
     icon: <FaUsers />,
     title: 'Built for Learners',
-    text: 'Track solved problems, submission history, and a LeetCode-style activity heatmap so you can see your consistency over time.'
+    text: 'Track solved problems, submission history, and an activity heatmap so you can see your consistency over time.'
   },
   {
     icon: <FaShieldAlt />,
@@ -34,7 +34,7 @@ const About = () => {
           <span className="page-eyebrow">About Us</span>
           <h1>Helping developers <span className="text-gradient">level up</span> one problem at a time</h1>
           <p className="about-lead">
-            Mini LeetCode is a coding practice platform inspired by the best interview-prep tools — 
+            CODEXA is a coding practice platform inspired by the best interview-prep tools — 
             built to be fast, focused, and accessible for students and self-taught developers.
           </p>
         </div>
@@ -45,7 +45,7 @@ const About = () => {
           <div className="mission-card glass-card">
             <h2>Our Mission</h2>
             <p>
-              We believe consistent practice beats cramming. Mini LeetCode gives you a structured 
+              We believe consistent practice beats cramming. CODEXA gives you a structured 
               environment to solve algorithm problems, learn from failures, and build confidence 
               before your next technical interview.
             </p>
@@ -75,7 +75,7 @@ const About = () => {
       <section className="about-values">
         <div className="section-header">
           <span className="page-eyebrow">What we offer</span>
-          <h2>Why Mini LeetCode?</h2>
+          <h2>Why CODEXA?</h2>
         </div>
         <div className="values-grid">
           {values.map((v, i) => (

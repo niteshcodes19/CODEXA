@@ -5,7 +5,7 @@ const Submission = require('../model/submission');
 const Question = require('../model/questions');
 
 (async () => {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/mini_leetcode');
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/codexa');
 
     const subs = await Submission.find({});
     let updated = 0;

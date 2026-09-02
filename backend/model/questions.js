@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const testCaseSchema = new mongoose.Schema({
-    input: { type: String, required: true },
-    expected_output: { type: String, required: true },
+    input: { type: String, default: '' },
+    expected_output: { type: String, default: '' },
     is_sample: { type: Boolean, default: false }
 }, { _id: true });
 

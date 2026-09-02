@@ -43,11 +43,11 @@ const seedDefaultAdmins = async () => {
             const hashedPassword = await bcrypt.hash('superadmin123', 12);
             await Admin.create({
                 name: 'Super Admin',
-                email: 'superadmin@leetcode.com',
+                email: 'superadmin@codexa.dev',
                 password: hashedPassword,
                 role: 'superadmin'
             });
-            console.log('Default superadmin created: superadmin@leetcode.com / superadmin123');
+            console.log('Default superadmin created: superadmin@codexa.dev / superadmin123');
         }
 
         const existingAdmin = await Admin.findOne({ role: 'admin' });
@@ -55,11 +55,11 @@ const seedDefaultAdmins = async () => {
             const hashedPassword = await bcrypt.hash('admin123', 12);
             await Admin.create({
                 name: 'Admin',
-                email: 'admin@leetcode.com',
+                email: 'admin@codexa.dev',
                 password: hashedPassword,
                 role: 'admin'
             });
-            console.log('Default admin created: admin@leetcode.com / admin123');
+            console.log('Default admin created: admin@codexa.dev / admin123');
         }
     } catch (error) {
         console.error('Error seeding admins:', error.message);

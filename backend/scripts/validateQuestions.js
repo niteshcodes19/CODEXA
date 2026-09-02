@@ -15,6 +15,28 @@ const referenceSolutions = {
         return new int[]{};
     }
 }`,
+    2: `class Solution {
+    public boolean isValid(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (c == '(') stack.push(')');
+            else if (c == '{') stack.push('}');
+            else if (c == '[') stack.push(']');
+            else if (stack.isEmpty() || stack.pop() != c) return false;
+        }
+        return stack.isEmpty();
+    }
+}`,
+    4: `class Solution {
+    public int maxProfit(int[] prices) {
+        int min = Integer.MAX_VALUE, max = 0;
+        for (int p : prices) {
+            min = Math.min(min, p);
+            max = Math.max(max, p - min);
+        }
+        return max;
+    }
+}`,
     17: `class Solution {
     public int calPoints(String[] ops) {
         List<Integer> st = new ArrayList<>();
@@ -31,7 +53,18 @@ const referenceSolutions = {
         return sum;
     }
 }`,
-    36: `class Solution {
+    42: `class Solution {
+    public int maxArea(int[] height) {
+        int max = 0, l = 0, r = height.length - 1;
+        while (l < r) {
+            max = Math.max(max, Math.min(height[l], height[r]) * (r - l));
+            if (height[l] < height[r]) l++;
+            else r--;
+        }
+        return max;
+    }
+}`,
+    81: `class Solution {
     public int trap(int[] height) {
         int l = 0, r = height.length - 1, lm = 0, rm = 0, water = 0;
         while (l < r) {
@@ -46,12 +79,16 @@ const referenceSolutions = {
         return water;
     }
 }`,
-    50: `class Solution {
+    100: `class Solution {
     public int maxProfit(int[] prices) {
-        int profit = 0;
-        for (int i = 1; i < prices.length; i++)
-            if (prices[i] > prices[i - 1]) profit += prices[i] - prices[i - 1];
-        return profit;
+        int buy1 = Integer.MIN_VALUE, sell1 = 0, buy2 = Integer.MIN_VALUE, sell2 = 0;
+        for (int p : prices) {
+            buy1 = Math.max(buy1, -p);
+            sell1 = Math.max(sell1, buy1 + p);
+            buy2 = Math.max(buy2, sell1 - p);
+            sell2 = Math.max(sell2, buy2 + p);
+        }
+        return sell2;
     }
 }`
 };

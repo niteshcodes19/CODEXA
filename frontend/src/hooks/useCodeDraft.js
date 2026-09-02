@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 
-const draftKey = (questionId) => `mini-leetcode-draft-${questionId}`;
+const draftKey = (questionId) => `codexa-draft-${questionId}`;
 
 export const loadCodeDraft = (questionId, starterCode = '') => {
   if (!questionId) return starterCode;

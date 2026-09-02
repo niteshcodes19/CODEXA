@@ -8,11 +8,11 @@ dns.setServers([
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Question = require('./model/questions');
-const questions = require('./data/questions50');
+const questions = require('./data/questions100');
 
 const connectDb = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/mini_leetcode');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/codexa');
         console.log('MongoDB connected for seeding');
     } catch (error) {
         console.error('MongoDB connection failed:', error.message);
@@ -29,7 +29,7 @@ const seedDB = async () => {
             await Question.findOneAndUpdate(
                 { question_number: q.question_number },
                 { $set: q },
-                { upsert: true, new: true, runValidators: true }
+                { upsert: true, returnDocument: 'after', runValidators: true }
             );
         }
 
