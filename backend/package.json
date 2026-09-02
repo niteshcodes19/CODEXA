@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node server.js",
+    "build": "bash build.sh",
     "seed": "node seed.js"
   },
   "dependencies": {

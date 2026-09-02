@@ -4,6 +4,12 @@ const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
+// If a local portable JDK was installed (e.g. on Render native environment), add it to PATH
+const localJdkBin = path.resolve(__dirname, '..', 'jdk', 'bin');
+if (fs.existsSync(localJdkBin)) {
+    process.env.PATH = `${localJdkBin}${path.delimiter}${process.env.PATH}`;
+}
+
 /** Move all import statements to the top of a Java source file */
 const reorderJavaImports = (source) => {
     const lines = source.split('\n');
