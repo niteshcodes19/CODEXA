@@ -117,17 +117,11 @@ serviceAccountKey.json
 firebase-adminsdk-*.json
 
 
-# ==========================================
-# Local Database / Data
-# ==========================================
-
+# Local database files
 *.sqlite
 *.sqlite3
 *.db
 
-# Local data directories
-data/
-backend/data/
 
 
 # ==========================================
