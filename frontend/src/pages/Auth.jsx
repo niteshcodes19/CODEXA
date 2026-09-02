@@ -82,8 +82,18 @@ const Auth = ({ mode: modeProp, adminOnly = false }) => {
           await adminLogin(formData.email, formData.password);
           navigate('/admin', { replace: true });
         } else {
-          await login(formData.email, formData.password);
-          navigate('/problems', { replace: true });
+          try {
+            await login(formData.email, formData.password);
+            navigate('/problems', { replace: true });
+          } catch (userErr) {
+            // Auto-fallback: check if the credentials belong to an admin account
+            try {
+              await adminLogin(formData.email, formData.password);
+              navigate('/admin', { replace: true });
+            } catch {
+              throw userErr;
+            }
+          }
         }
       } else {
         const payload = {

@@ -28,13 +28,13 @@ const UserRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
-  return isAuthenticated && isAdmin ? children : <Navigate to="/vikash" />;
+  return isAuthenticated && isAdmin ? children : <Navigate to="/admin/login" />;
 };
 
 const SuperadminRoute = ({ children }) => {
   const { isAuthenticated, isSuperAdmin, loading } = useAuth();
   if (loading) return <div>Loading...</div>;
-  return isAuthenticated && isSuperAdmin ? children : <Navigate to="/vikash" />;
+  return isAuthenticated && isSuperAdmin ? children : <Navigate to="/admin/login" />;
 };
 
 const Layout = ({ children }) => {
@@ -77,6 +77,8 @@ const App = () => {
               <Route path="/login" element={<Auth mode="login" />} />
               <Route path="/register" element={<Auth mode="register" />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/admin/login" element={<Auth adminOnly />} />
+              <Route path="/admin-login" element={<Auth adminOnly />} />
               <Route path="/vikash" element={<Auth adminOnly />} />
               <Route path="/problems" element={<Problems />} />
               <Route path="/ranking" element={<Ranking />} />
