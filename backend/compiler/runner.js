@@ -122,10 +122,26 @@ const compileJava = (runDir) => {
     });
 };
 
+const FAST_JVM_FLAGS = [
+    '-XX:+TieredCompilation',
+    '-XX:TieredStopAtLevel=1',
+    '-Xms16m',
+    '-Xmx128m'
+];
+
+const cleanStderr = (err) => {
+    if (!err) return '';
+    return err
+        .split('\n')
+        .filter(line => !line.includes('warning:') && !line.includes('VM warning'))
+        .join('\n')
+        .trim();
+};
+
 const executeCompiledJava = (runDir, input, timeoutMs = 4000) => {
     return new Promise((resolve) => {
         const startTime = Date.now();
-        const child = spawn('java', ['-Xmx256m', 'Main'], { cwd: runDir });
+        const child = spawn('java', [...FAST_JVM_FLAGS, 'Main'], { cwd: runDir });
 
         let output = '';
         let error = '';
@@ -174,7 +190,7 @@ const executeCompiledJava = (runDir, input, timeoutMs = 4000) => {
                 clearTimeout(timeoutId);
                 resolve({
                     output,
-                    error: error.trim(),
+                    error: cleanStderr(error),
                     runtime: Date.now() - startTime
                 });
             }
@@ -265,43 +281,60 @@ const runCode = async (code, language, testcases) => {
             };
         }
 
-        // 2. Run compiled bytecode against each testcase rapidly
-        for (let i = 0; i < testcases.length; i++) {
-            const testcase = testcases[i];
-            const res = await executeCompiledJava(runDir, testcase.input);
+        // 2. Run testcases in concurrent batches (concurrency = 8)
+        const BATCH_SIZE = 8;
+        let shouldStop = false;
 
-            const actual = extractProgramOutput(res.output);
-            const expected = (testcase.expected_output || '').replace(/\r\n/g, '\n').trim();
-            let tcPassed = false;
-
-            if (res.error) {
-                if (res.error === 'Time Limit Exceeded') {
-                    status = 'Time Limit Exceeded';
-                    errorMessage = res.error;
-                } else {
-                    status = 'Runtime Error';
-                    errorMessage = res.error;
-                }
-            } else if (outputsMatch(actual, expected)) {
-                tcPassed = true;
-                passed++;
-            } else {
-                status = 'Wrong Answer';
-            }
-
-            totalRuntime += res.runtime;
-            results.push({
-                testcase_index: i,
-                input: testcase.input,
-                expected: testcase.expected_output,
-                actual: extractProgramOutput(res.output) || res.output,
-                passed: tcPassed,
-                runtime: res.runtime
+        for (let i = 0; i < testcases.length; i += BATCH_SIZE) {
+            const chunk = testcases.slice(i, i + BATCH_SIZE);
+            const chunkPromises = chunk.map((tc, idx) => {
+                const globalIndex = i + idx;
+                return executeCompiledJava(runDir, tc.input).then((res) => ({
+                    globalIndex,
+                    testcase: tc,
+                    res
+                }));
             });
 
-            if (status !== 'Accepted') {
-                break; // Stop on first failure
+            const chunkResults = await Promise.all(chunkPromises);
+
+            for (const item of chunkResults) {
+                const { globalIndex, testcase, res } = item;
+                const actual = extractProgramOutput(res.output);
+                const expected = (testcase.expected_output || '').replace(/\r\n/g, '\n').trim();
+                let tcPassed = false;
+
+                if (res.error) {
+                    if (res.error === 'Time Limit Exceeded') {
+                        status = 'Time Limit Exceeded';
+                        errorMessage = res.error;
+                    } else {
+                        status = 'Runtime Error';
+                        errorMessage = res.error;
+                    }
+                    shouldStop = true;
+                } else if (outputsMatch(actual, expected)) {
+                    tcPassed = true;
+                    passed++;
+                } else {
+                    status = 'Wrong Answer';
+                    shouldStop = true;
+                }
+
+                totalRuntime += res.runtime;
+                results[globalIndex] = {
+                    testcase_index: globalIndex,
+                    input: testcase.input,
+                    expected: testcase.expected_output,
+                    actual: extractProgramOutput(res.output) || res.output,
+                    passed: tcPassed,
+                    runtime: res.runtime
+                };
+
+                if (shouldStop) break;
             }
+
+            if (shouldStop) break; // Skip subsequent chunks on first failure
         }
     } finally {
         try {
